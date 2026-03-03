@@ -1,18 +1,27 @@
+# =========================
 # Basic configuration
-NAME = so_long
-CC = cc
-CFLAGS = -Wall -Werror -Wextra -fPIE -Ilibs/MLX42-master/include -I/usr/include/GLFW
-OBJS = $(CFILES:.c=.o)
+# =========================
+NAME    = so_long
+CC      = cc
+CFLAGS  = -Wall -Werror -Wextra -fPIE
 
-# Files
-CFILES = $(SO_LONG_FILES) $(GET_NEXT_LINE_FILES) $(PRINTF_FILES) $(SO_LIBFT_FILES)
+# =========================
+# MLX42 (cache outside project path to avoid spaces issues)
+# =========================
+MLX42_REPO    = https://github.com/codam-coding-college/MLX42.git
+MLX42_TAG     = v2.4.2
 
-# MLX42 lib
-MLX42_DIR = libs/MLX42-master/build
-MLX42_LIB = $(MLX42_DIR)/libmlx42.a
-MLX42_FLAGS = -lglfw -pthread -lm -ldl
+MLX42_CACHE   = $(HOME)/.cache/mlx42
+MLX42_SRC     = $(MLX42_CACHE)/MLX42
+MLX42_BUILD   = $(MLX42_SRC)/build
+MLX42_LIB     = $(MLX42_BUILD)/libmlx42.a
 
+HEADERS = -I$(MLX42_SRC)/include -I/usr/include/GLFW
+LIBS    = $(MLX42_LIB) -ldl -lglfw -pthread -lm
+
+# =========================
 # Source Files
+# =========================
 SO_LONG_FILES = 		src/so_long.c\
 						src/so_long_loadmap.c\
 						src/so_long_checkmap.c\
@@ -39,23 +48,46 @@ SO_LIBFT_FILES =		src/so_libft/so_strdupp.c \
 						src/so_libft/so_strlcpy.c \
 						src/so_libft/so_strlen.c
 
-# Orders
+CFILES = $(SO_LONG_FILES) $(GET_NEXT_LINE_FILES) $(PRINTF_FILES) $(SO_LIBFT_FILES)
+OBJS   = $(CFILES:.c=.o)
+
+# =========================
+# Targets
+# =========================
 all: $(MLX42_LIB) $(NAME)
 
 $(NAME): $(OBJS)
-	$(CC) $(CFLAGS) $(OBJS) $(MLX42_LIB) $(MLX42_FLAGS) -o $(NAME)
+	$(CC) $(CFLAGS) $(OBJS) $(LIBS) -o $(NAME)
 
-$(MLX42_LIB):
-	@chmod +x libs/MLX42-master/tools/compile_shader.sh
-	@mkdir -p $(MLX42_DIR)
-	@cd libs/MLX42-master && cmake -B build && cmake --build build
+%.o: %.c
+	$(CC) $(CFLAGS) $(HEADERS) -c $< -o $@
+
+# =========================
+# MLX42: download + build (in cache)
+# =========================
+$(MLX42_SRC):
+	@mkdir -p "$(MLX42_CACHE)"
+	@if [ ! -d "$(MLX42_SRC)/.git" ]; then \
+		echo "Cloning MLX42 into $(MLX42_SRC)"; \
+		git clone --depth 1 --branch "$(MLX42_TAG)" "$(MLX42_REPO)" "$(MLX42_SRC)"; \
+	fi
+
+$(MLX42_LIB): | $(MLX42_SRC)
+	@if [ -f "$(MLX42_SRC)/tools/compile_shader.sh" ]; then chmod +x "$(MLX42_SRC)/tools/compile_shader.sh"; fi
+	@cmake -S "$(MLX42_SRC)" -B "$(MLX42_BUILD)"
+	@cmake --build "$(MLX42_BUILD)"
+
+libs: $(MLX42_LIB)
+
+# (Opcional) borrar la cache de MLX42 para “empezar de cero”
+mlxclean:
+	rm -rf "$(MLX42_SRC)"
 
 clean:
 	rm -f $(OBJS)
 
-fclean: clean
+fclean: clean mlxclean
 	rm -f $(NAME)
-	rm -rf $(MLX42_DIR)
 
 re: fclean all
 
@@ -63,18 +95,12 @@ winstall:
 	sudo apt-get update
 	sudo apt-get install -y cmake libgl-dev libglx-dev libglu-dev mesa-common-dev \
 		libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev
-	sudo apt-get install libglfw3-dev
-	sudo apt-get install build-essential
-	sudo apt-get install libc6-dev
-	sudo apt update
-	sudo apt install libglfw3-dev
+	sudo apt-get install -y libglfw3-dev build-essential libc6-dev
 
-libs: $(MLX42_LIB)
-
-test: 
+test:
 	@./$(NAME) $(filter-out $@,$(MAKECMDGOALS))
 
 valgrind: re
 	valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes ./$(NAME) $(filter-out $@,$(MAKECMDGOALS))
 
-.PHONY: all clean fclean re winstall libs test valgrind
+.PHONY: all libs mlxclean clean fclean re winstall test valgrind
