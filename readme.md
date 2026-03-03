@@ -18,6 +18,8 @@ Compatible con Linux y WSL
 
 
 # 📸 Vista del Proyecto
+![Gameplay 1](./images/show1.png)
+![Gameplay 2](./images/show2.png)
 
 ```bash
 📂 Estructura del Proyecto
@@ -76,19 +78,22 @@ make valgrind maps/map.ber
 🗺️ Formato del Mapa
 
 Ejemplo válido:
-
+```bash
 1111111
 1P0C001
 1000001
 1C000E1
 1111111
-Leyenda
+```
 
+Leyenda
+```bash
 1 → Muro
 0 → Espacio vacío
 P → Jugador
 C → Coleccionable
 E → Salida
+```
 
 # 🛠 Sistema de Build
 MLX42 se descarga automáticamente.
